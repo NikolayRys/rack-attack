@@ -30,16 +30,16 @@ class MiniTest::Spec
   include Rack::Test::Methods
 
   before do
-    @_original_throttled_response = Rack::Attack.throttled_response
-    @_original_blocklisted_response = Rack::Attack.blocklisted_response
+    @_original_throttled_callback = Rack::Attack.throttled_callback
+    @_original_blocklisted_callback = Rack::Attack.blocklisted_callback
   end
 
   after do
     Rack::Attack.clear_configuration
     Rack::Attack.instance_variable_set(:@cache, nil)
 
-    Rack::Attack.throttled_response = @_original_throttled_response
-    Rack::Attack.blocklisted_response = @_original_blocklisted_response
+    Rack::Attack.throttled_callback = @_original_throttled_callback
+    Rack::Attack.blocklisted_callback = @_original_blocklisted_callback
   end
 
   def app
