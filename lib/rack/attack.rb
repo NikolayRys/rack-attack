@@ -30,11 +30,11 @@ class Rack::Attack
     attr_accessor :notifier, :blocklisted_callback, :throttled_callback, :anonymous_blocklists, :anonymous_safelists
     attr_reader :blocklisted_response, :throttled_response # Deprecated: Keeping these for backwards compatibility
 
-
     def blocklisted_response=(callback)
       warn "[DEPRECATION] Rack::Attack.blocklisted_response is deprecated. Please use Rack::Attack.blocklisted_callback instead."
       @blocklisted_response = callback
     end
+
     def throttled_response=(callback)
       warn "[DEPRECATION] Rack::Attack.throttled_response is deprecated. Please use Rack::Attack.throttled_callback instead"
       @throttled_response = callback
