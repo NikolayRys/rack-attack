@@ -27,7 +27,18 @@ class Rack::Attack
   autoload :Allow2Ban,            'rack/attack/allow2ban'
 
   class << self
-    attr_accessor :notifier, :blocklisted_response, :throttled_response, :anonymous_blocklists, :anonymous_safelists
+    attr_accessor :notifier, :blocklisted_callback, :throttled_callback, :anonymous_blocklists, :anonymous_safelists
+    attr_reader :blocklisted_response, :throttled_response # Deprecated: Keeping these for backwards compatibility
+
+    def blocklisted_response=(callback)
+      warn "[DEPRECATION] Rack::Attack.blocklisted_response is deprecated. Please use Rack::Attack.blocklisted_callback instead."
+      @blocklisted_response = callback
+    end
+
+    def throttled_response=(callback)
+      warn "[DEPRECATION] Rack::Attack.throttled_response is deprecated. Please use Rack::Attack.throttled_callback instead"
+      @throttled_response = callback
+    end
 
     def safelist(name = nil, &block)
       safelist = Safelist.new(name, &block)
@@ -131,13 +142,17 @@ class Rack::Attack
 
   # Set defaults
   @anonymous_blocklists = []
-  @anonymous_safelists = []
+  @anonymous_safelists  = []
   @notifier             = ActiveSupport::Notifications if defined?(ActiveSupport::Notifications)
-  @blocklisted_response = lambda { |_env| [403, { 'Content-Type' => 'text/plain' }, ["Forbidden\n"]] }
-  @throttled_response   = lambda { |env|
-    retry_after = (env['rack.attack.match_data'] || {})[:period]
+  @blocklisted_callback = lambda { |_req| [403, { 'Content-Type' => 'text/plain' }, ["Forbidden\n"]] }
+  @throttled_callback   = lambda { |req|
+    retry_after = (req.env['rack.attack.match_data'] || {})[:period]
     [429, { 'Content-Type' => 'text/plain', 'Retry-After' => retry_after.to_s }, ["Retry later\n"]]
   }
+
+  # Deprecated: Keeping these for backwards compatibility
+  @blocklisted_response = nil
+  @throttled_response = nil
 
   def initialize(app)
     @app = app
@@ -146,13 +161,16 @@ class Rack::Attack
   def call(env)
     env['PATH_INFO'] = PathNormalizer.normalize_path(env['PATH_INFO'])
     request = Rack::Attack::Request.new(env)
+    klass = self.class
 
     if safelisted?(request)
       @app.call(env)
     elsif blocklisted?(request)
-      self.class.blocklisted_response.call(env)
+      # Deprecated: Keeping blocklisted_response for backwards compatibility
+      klass.blocklisted_response ? klass.blocklisted_response.call(env) : klass.blocklisted_callback.call(request)
     elsif throttled?(request)
-      self.class.throttled_response.call(env)
+      # Deprecated: Keeping throttled_response for backwards compatibility
+      klass.throttled_response ? klass.throttled_response.call(env) : klass.throttled_callback.call(request)
     else
       tracked?(request)
       @app.call(env)
