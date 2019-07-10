@@ -5,15 +5,16 @@ module Rack
     class Throttle
       MANDATORY_OPTIONS = [:limit, :period].freeze
 
-      attr_reader :name, :limit, :period, :block, :type
+      attr_reader :name, :limit, :period, :block, :type, :explicit
       def initialize(name, options, &block)
         @name, @block = name, block
         MANDATORY_OPTIONS.each do |opt|
           raise ArgumentError, "Must pass #{opt.inspect} option" unless options[opt]
         end
-        @limit  = options[:limit]
-        @period = options[:period].respond_to?(:call) ? options[:period] : options[:period].to_i
-        @type   = options.fetch(:type, :throttle)
+        @limit    = options[:limit]
+        @period   = options[:period].respond_to?(:call) ? options[:period] : options[:period].to_i
+        @type     = options.fetch(:type, :throttle)
+        @explicit = options[:explicit]
       end
 
       def cache
@@ -38,6 +39,13 @@ module Rack
         }
 
         (request.env['rack.attack.throttle_data'] ||= {})[name] = data
+
+
+        if explicit
+          request.env["rack.attack.#{name}.discriminator"] = discriminator
+          request.env["rack.attack.#{name}.type"]          = type
+          request.env["rack.attack.#{name}.data"]          = data
+        end
 
         (count > current_limit).tap do |throttled|
           if throttled
